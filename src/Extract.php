@@ -40,7 +40,8 @@ class Extract
         throw new \UnexpectedValueException('Capturing groups in $format must be named');
       }
 
-      list($this->keys[], $specifier) = explode(':', $match); # split on ':'
+      list($key, $specifier) = explode(':', $match); # split on ':'
+      $this->keys[] = $key;
 
       if ($specifier === null) { # no specifier
         return '([^{}]+)';
