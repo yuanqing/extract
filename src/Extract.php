@@ -40,8 +40,7 @@ class Extract
         throw new \UnexpectedValueException('Capturing groups in $format must be named');
       }
 
-      list($key, $specifier) = explode(':', $match); # split on ':'
-      $this->keys[] = $key;
+      @list($this->keys[], $specifier) = explode(':', $match); # split on ':'
 
       if ($specifier === null) { # no specifier
         return '([^{}]+)';
@@ -63,7 +62,7 @@ class Extract
         } else if (substr($len, -1) == '.') {
           $lenBeforeDot = substr($len, 0, -1); # drop last '.'
         } else {
-          list($lenBeforeDot, $lenAfterDot) = explode('.', $len);
+          @list($lenBeforeDot, $lenAfterDot) = explode('.', $len);
         }
       }
 
