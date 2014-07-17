@@ -1,0 +1,21 @@
+{
+  "name": "yuanqing/extract",
+  "description": "Sugar for getting data out of string in PHP.",
+  "keywords": ["string", "extract", "extraction", "regex"],
+  "homepage": "https://github.com/yuanqing/extract",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Lim Yuan Qing",
+      "email": "hello@yuanqing.sg"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "yuanqing\\Extract\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=5.3"
+  }
+}
