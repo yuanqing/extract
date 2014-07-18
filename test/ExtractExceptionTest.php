@@ -33,10 +33,31 @@ class ExtractExceptionTest extends PHPUnit_Framework_TestCase
 
       # invalid capturing group
       array('{{ }}'),
+      array('{{ . }}'),
+      array('{{ : }}'),
 
       # invalid length specifier
       array('{{ foo : 0 }}'),
-      array('{{ foo : 12.3 }}'),
+      array('{{ foo : 1.2 }}'),
+
+      # invalid length specifier, string type
+      array('{{ foo : 0.0s }}'),
+      array('{{ foo : 0s }}'),
+      array('{{ foo : 0.s }}'),
+      array('{{ foo : .0s }}'),
+      array('{{ foo : 1.2s }}'),
+      array('{{ foo : .2s }}'),
+
+      # invalid length specifier, integer type
+      array('{{ foo : 0.0d }}'),
+      array('{{ foo : 0d }}'),
+      array('{{ foo : 0.d }}'),
+      array('{{ foo : .0d }}'),
+      array('{{ foo : 1.2d }}'),
+      array('{{ foo : .2d }}'),
+
+      # invalid length specifier, float type
+      array('{{ foo : 0f }}'),
       array('{{ foo : 0.0f }}')
 
     );

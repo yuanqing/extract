@@ -15,98 +15,137 @@ class Extract
   private $regex;
 
   /**
-   * @param string $format The format to match strings against
    * @throws InvalidArgumentException
    */
   public function __construct($format = null)
   {
-    if ($format === null || !is_string($format)) {
+    if (!is_string($format)) {
       throw new \InvalidArgumentException('$format must be a string');
     }
+    $this->parseFormat($format);
+  }
+
+  /**
+   * Parses the given $format into {$regex}, and populates the {$keys} array
+   *
+   * @param string $format The format to match strings against
+   * @throws InvalidArgumentException
+   */
+  public function parseFormat($format)
+  {
     $this->keys = array();
 
-    # escape characters not inside tags (ie. outside double braces)
-    $regex = preg_replace_callback('/[^}]+(?={{)/', function($matches) {
-      return preg_quote($matches[0], '/'); # also escape '/'
-    }, $format . '{{'); # append '{{' to make the regex work
-    $regex = substr($regex, 0, -2); # drop the '{{'
+    $regex = '';
+    $curr = '';
+    $beforeGroup = '';
+    $afterGroup = '';
 
-    # replace tags with capturing groups; callback is a class method to accommodate PHP 5.3
-    $regex = preg_replace_callback('/{{(.+?)}}/', array($this, 'replaceTags'), $regex);
+    $split = str_split($format);
+    $count = count($split);
+    for ($i=0; $i<$count; $i++) {
+      $c = $split[$i];
+      if ($c == '{') {
+        $regex .= preg_quote($curr, '/');
+        $curr = '';
+        if ($i+1 < $count && $split[$i+1] == '{') {
+          $beforeGroup = $i != 0 ? $split[$i-1] : '';
+          $i++;
+          continue;
+        }
+      } else if ($c == '}' && ($i+1 < $count && $split[$i+1] == '}')) {
+        $afterGroup = $i+2 < $count ? $split[$i+2] : '';
+        $regex .= $this->parseCapturingGroup(trim($curr), $beforeGroup, $afterGroup);
+        $curr = '';
+        $i++;
+        continue;
+      }
+      $curr .= $c;
+    }
 
     if (empty($this->keys)) {
       throw new \InvalidArgumentException('$format must have at least one capturing group');
     }
 
-    # match the string from beginning to end; use /s flag so that wildcard char also matches "\n"
-    $this->regex = '/^' . $regex . '$/s';
+    # use /s flag so that wildcard char also matches "\n"
+    $this->regex = '/^' . $regex . preg_quote($curr, '/') . '$/s';
   }
 
   /**
-   * Callback for preg_replace_callback called in __construct
+   * Parse a capturing group into a RegEx capturing group
    *
-   * @param string $matches Array of matched elements
+   * @param string $group The string between the opening '{{' and closing '}}'
+   * @param string $charBefore The character before the opening '{{'
+   * @param string $charAfter The character after the closing '}}'
    * @throws UnexpectedValueException
    */
-  private function replaceTags($matches) # $matches is the tag
+  private function parseCapturingGroup($group, $charBefore, $charAfter)
   {
-    $match = trim($matches[1]);
-    if ($match === '') {
-      throw new \InvalidArgumentException(sprintf('Invalid capturing group name: %s', $matches[0]));
+    $split = explode(':', $group); # split on ':'
+
+    # $key is before the ':''
+    $key = trim($split[0]);
+    if ($key === '' || $key == '.') {
+      throw new \InvalidArgumentException('Invalid capturing group');
+    }
+    $this->keys[] = $key;
+
+    # $specifier is after the ':'
+    if (!isset($split[1])) { # no $specifier
+      if ($charAfter !== '' || $charBefore !== '') {
+        return sprintf('([^%s]+)', preg_quote($charAfter !== '' ? $charAfter : $charBefore, '/'));
+      }
+      return '(.+)';
     }
 
-    $split = explode(':', $match); # split on ':'
-    $this->keys[] = trim($split[0]);
-
-    # specifier absent
-    if (!isset($split[1])) {
-      return '(.+?)';
-    }
-
-    # specifier present
     $specifier = trim($split[1]);
     if ($specifier === '0') {
       throw new \InvalidArgumentException('Invalid length specifier: 0');
     }
 
-    $lastChar = substr($specifier, -1); # $lastChar of $specifier is the type
-    switch ($lastChar) {
+    # last char of $specifier is the $type
+    $type = substr($specifier, -1);
+    switch ($type) {
       case 'd': # integer
-      case 'f': # float
       case 's': # string
-        $len = trim(substr($specifier, 0, -1)) ?: '1,'; # $len defaults to >=1
-        # if float type, find $lenBeforeDec and $lenAfterDec
-        if ($lastChar == 'f') {
-          if ($len === '1,') { # ie. no length specified
-            $lenBeforeDec = $lenAfterDec = '1,';
+        $len = trim(substr($specifier, 0, -1));
+        if ($len === '') {
+          $len = '1,';
+        } else {
+          if (!$this->canCastToInteger($len) || intval($len) === 0) {
+            throw new \InvalidArgumentException(sprintf('Invalid length specifier: %s', $len));
+          }
+        }
+        break;
+      case 'f': # float
+        $len = trim(substr($specifier, 0, -1));
+        if ($len === '') { # ie. no length specified
+          $lenBeforeDec = $lenAfterDec = '1,';
+        } else {
+          if ($len[0] === '.') { # first char is '.'
+            $lenBeforeDec = '0,';
+            $lenAfterDec = substr($len, 1);
+          } else if (substr($len, -1) === '.') { # last char is '.'
+            $lenBeforeDec = substr($len, 0, -1);
+            $lenAfterDec = '0,';
           } else {
-            if ($len[0] === '.') { # first char is '.'
-              $lenBeforeDec = '0,';
-              $lenAfterDec = substr($len, 1);
-            } else if (substr($len, -1) === '.') { # last char is '.'
-              $lenBeforeDec = substr($len, 0, -1);
-              $lenAfterDec = '0,';
-            } else {
-              if ($len === '0.0') {
-                throw new \InvalidArgumentException('Invalid length specifier: 0.0');
-              }
-              $split = explode('.', $len);
-              $lenBeforeDec = trim($split[0]);
-              $lenAfterDec = trim($split[1]);
+            if ($len === '0.0' || $len === '0') {
+              throw new \InvalidArgumentException('Invalid length specifier: 0.0');
             }
+            $split = explode('.', $len);
+            $lenBeforeDec = trim($split[0]);
+            $lenAfterDec = trim($split[1]);
           }
         }
         break;
       default: # no type
-        $cast = (int) $specifier;
-        if ($specifier !== (string) $cast) {
+        $len = $specifier;
+        if (!$this->canCastToInteger($len)) {
           throw new \InvalidArgumentException(sprintf('Invalid length specifier: %s', $specifier));
         }
-        $len = $specifier;
     }
 
     # finally, return the capturing group
-    switch ($lastChar) {
+    switch ($type) {
       case 'd':
         return sprintf('(\d{%s})', $len);
       case 'f':
@@ -186,6 +225,21 @@ class Extract
         $str = floatval($str);
       }
     }
+  }
+
+  /**
+   * Returns true if $obj can be cast to integer
+   *
+   * @param mixed $obj
+   * @return boolean
+   */
+  private function canCastToInteger($obj)
+  {
+    $cast = intval($obj);
+    if (is_numeric($obj) && (string) $cast == (string) $obj) {
+      return true;
+    }
+    return false;
   }
 
   /**

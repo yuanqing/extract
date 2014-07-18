@@ -286,6 +286,7 @@ class ExtractTest extends PHPUnit_Framework_TestCase
         'bar' => 'quux',
         'baz' => 'bam'
       )),
+      array('/{{ foo }}/{{ bar }}/{{ baz }}/', '/qux/quux/bam/foo/', null),
       array('/{{ foo : 3 }}/{{ bar : 4 }}/{{ baz : 3 }}/', '/qux/quux/bam/', array(
         'foo' => 'qux',
         'bar' => 'quux',
