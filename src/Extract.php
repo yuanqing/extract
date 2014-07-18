@@ -1,6 +1,6 @@
 <?php
 /**
- * Extract.php - Sugar for getting data out of string in PHP.
+ * Extract.php - Sugar for getting data out of strings in PHP.
  *
  * @author Lim Yuan Qing <hello@yuanqing.sg>
  * @license MIT
@@ -18,24 +18,28 @@ class Extract
    * @param string $format The format to match strings against
    * @throws InvalidArgumentException
    */
-  public function __construct($format)
+  public function __construct($format = null)
   {
-    if (!is_string($format)) {
+    if ($format === null || !is_string($format)) {
       throw new \InvalidArgumentException('$format must be a string');
     }
     $this->keys = array();
 
-    # escape characters not inside tags (ie. outside thet double braces)
+    # escape characters not inside tags (ie. outside double braces)
     $regex = preg_replace_callback('/[^}]+(?={{)/', function($matches) {
       return preg_quote($matches[0], '/'); # also escape '/'
     }, $format . '{{'); # append '{{' to make the regex work
     $regex = substr($regex, 0, -2); # drop the '{{'
 
     # replace tags with named capturing groups; callback is a class method to accommodate PHP 5.3
-    $regex = preg_replace_callback('/{{(.+?)}}/', array($this, 'replaceTags'), $regex);
+    $regex = preg_replace_callback('/{{(.+?)}}(?=.{0,2})/', array($this, 'replaceTags'), $regex);
 
-    # match the string from beginning to end
-    $this->regex = '/^' . $regex . '$/';
+    if (empty($this->keys)) {
+      throw new \InvalidArgumentException('$format must have at least one capturing group');
+    }
+
+    # match the string from beginning to end; /s flag so that wildcard also matches "\n"
+    $this->regex = '/^' . $regex . '$/s';
   }
 
   /**
@@ -47,47 +51,66 @@ class Extract
   private function replaceTags($matches)
   {
     $match = trim($matches[1]);
-    if (!$match) {
-      throw new \UnexpectedValueException('Capturing groups in $format must be named');
+    if ($match === '') {
+      throw new \InvalidArgumentException(sprintf('Invalid capturing group name: %s', $matches[0]));
     }
 
     $split = explode(':', $match); # split on ':'
-    $this->keys[] = $split[0];
-    if (count($split) == 1) { # no specifier
-      return '([^{}]+)';
+    $this->keys[] = trim($split[0]);
+    if (count($split) === 1) { # no specifier
+      return '(.+?)';
     }
-    $specifier = $split[1];
-
-    $lastChar = substr($specifier, -1); # $type is the last char of $specifier
-    if (!ctype_alpha($lastChar)) { # no type
-      return sprintf('([^{}]{%s})', $lastChar);
+    $specifier = trim($split[1]);
+    if ($specifier === '0') {
+      throw new \InvalidArgumentException('Invalid length specifier: 0');
     }
 
-    $type = $lastChar;
+    $lastChar = substr($specifier, -1); # $lastChar of $specifier is the type
+    switch ($lastChar) {
+      case 's': # string
+      case 'd': # integer
+      case 'f': # float
+        break;
+      default: # no type
+        $int = (int) $specifier;
+        if ($specifier !== (string) $int) {
+          throw new \InvalidArgumentException(sprintf('Invalid length specifier: %s', $specifier));
+        }
+        return sprintf('(.{%s})', $specifier); # assume string type
+    }
 
-    $len = rtrim($specifier, $type) ?: '1,'; # default $len is {1,}
+    $len = trim(substr($specifier, 0, -1)) ?: '1,'; # $len defaults to >=1
 
-    if ($type == 'f') {
-      $lenBeforeDot = $lenAfterDot = '1,'; # defaults to {1,}
-      if ($len[0] == '.') {
-        $lenAfterDot = substr($len, 1); # drop first '.'
-      } else if (substr($len, -1) == '.') {
-        $lenBeforeDot = substr($len, 0, -1); # drop last '.'
+    # if float type, find $lenBeforeDec and $lenAfterDec
+    if ($lastChar == 'f') {
+      if ($len === '1,') { # ie. no length specified
+        $lenBeforeDec = $lenAfterDec = '1,';
       } else {
-        $split = explode('.', $len);
-        $lenBeforeDot = $split[0];
-        $lenAfterDot = $split[1];
+        if ($len[0] === '.') { # first char is '.'
+          $lenBeforeDec = '0,';
+          $lenAfterDec = substr($len, 1);
+        } else if (substr($len, -1) === '.') { # last char is '.'
+          $lenBeforeDec = substr($len, 0, -1);
+          $lenAfterDec = '0,';
+        } else {
+          if ($len === '0.0') {
+            throw new \InvalidArgumentException('Invalid length specifier: 0.0');
+          }
+          $split = explode('.', $len);
+          $lenBeforeDec = trim($split[0]);
+          $lenAfterDec = trim($split[1]);
+        }
       }
     }
 
-    # finally we return the capturing group
-    switch ($type) {
-      case 's':
-        return sprintf('([^{}]{%s})', $len);
+    # finally, return the capturing group
+    switch ($lastChar) {
       case 'd':
         return sprintf('(\d{%s})', $len);
       case 'f':
-        return sprintf('(\d{%s}\.\d{%s})',  $lenBeforeDot, $lenAfterDot);
+        return sprintf('(\d{%s}\.\d{%s})', $lenBeforeDec, $lenAfterDec);
+      default:
+        return sprintf('(.{%s})', $len);
     }
   }
 
@@ -119,7 +142,7 @@ class Extract
     # cast each element in $matches to integer or float if possible
     array_walk_recursive($matches, array($this, 'typeCast'));
 
-    return $matches;
+    return empty($matches) ? null : $matches;
   }
 
   /**
@@ -153,13 +176,13 @@ class Extract
    */
   private function typeCast(&$str)
   {
-    if (ctype_digit($str)) {
-      $cast = intval($str);
-      if ($str == (string) $cast) {
-        $str = $cast;
+    if (is_numeric($str)) {
+      $int = intval($str);
+      if ($str == (string) $int) {
+        $str = $int;
+      } else {
+        $str = floatval($str);
       }
-    } else if (is_numeric($str)) {
-      $str = floatval($str);
     }
   }
 

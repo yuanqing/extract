@@ -1,6 +1,6 @@
 {
   "name": "yuanqing/extract",
-  "description": "Sugar for getting data out of string in PHP.",
+  "description": "Sugar for getting data out of strings in PHP.",
   "keywords": ["string", "extract", "extraction", "regex"],
   "homepage": "https://github.com/yuanqing/extract",
   "license": "MIT",
