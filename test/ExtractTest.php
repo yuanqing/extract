@@ -16,7 +16,8 @@ class ExtractTest extends PHPUnit_Framework_TestCase
    */
   public function testString($format, $str, $expected)
   {
-    $this->assertSame($expected, (new Extract($format))->extract($str));
+    $e = new Extract($format);
+    $this->assertSame($expected, $e->extract($str));
   }
   public function stringProvider()
   {
@@ -53,7 +54,8 @@ class ExtractTest extends PHPUnit_Framework_TestCase
    */
   public function testFormat($format, $str, $expected)
   {
-    $this->assertSame($expected, (new Extract($format))->extract($str));
+    $e = new Extract($format);
+    $this->assertSame($expected, $e->extract($str));
   }
   public function formatProvider()
   {
@@ -106,7 +108,8 @@ class ExtractTest extends PHPUnit_Framework_TestCase
    */
   public function testFormatWithSpecifier($format, $str, $expected)
   {
-    $this->assertSame($expected, (new Extract($format))->extract($str));
+    $e = new Extract($format);
+    $this->assertSame($expected, $e->extract($str));
   }
   public function formatWithSpecifierProvider()
   {
@@ -258,7 +261,8 @@ class ExtractTest extends PHPUnit_Framework_TestCase
    */
   public function testFormatMultipleGroups($format, $str, $expected)
   {
-    $this->assertSame($expected, (new Extract($format))->extract($str));
+    $e = new Extract($format);
+    $this->assertSame($expected, $e->extract($str));
   }
   public function formatMultipleGroupsProvider()
   {

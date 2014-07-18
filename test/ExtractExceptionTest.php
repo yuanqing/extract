@@ -48,7 +48,8 @@ class ExtractExceptionTest extends PHPUnit_Framework_TestCase
    */
   public function testInvalidString($str)
   {
-    (new Extract('{{ foo }}'))->extract($str);
+    $e = new Extract('{{ foo }}');
+    $e->extract($str);
   }
   public function invalidStringProvider()
   {
