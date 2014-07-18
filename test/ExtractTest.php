@@ -7,8 +7,6 @@
  * @link https://github.com/yuanqing/extract
  */
 
-require_once dirname(__DIR__) . '/src/Extract.php';
-
 use yuanqing\Extract\Extract;
 
 class ExtractTest extends PHPUnit_Framework_TestCase
