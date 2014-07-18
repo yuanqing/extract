@@ -1,6 +1,34 @@
 # Extract.php [![Packagist Version](http://img.shields.io/packagist/v/yuanqing/extract.svg)](https://packagist.org/packages/yuanqing/extract) [![Build Status](https://img.shields.io/travis/yuanqing/extract.svg)](https://travis-ci.org/yuanqing/extract) [![Coverage Status](https://img.shields.io/coveralls/yuanqing/extract.svg)](https://coveralls.io/r/yuanqing/extract)
 
-Sugar (to Regex) for getting data out of a string.
+Regular Expression sugar for extracting data out of a string:
+
+```php
+$format = '{{ foo }}, {{ bar }}!';
+$str = 'Hello, World!';
+$e = new yuanqing\Extract\Extract($format);
+var_dump($e->extract($str)); #=> array('foo' => 'Hello', 'bar' => 'World')
+```
+
+The `$format` is parsed and converted into a Regular Expression, which is then used to match against the given `$str`.
+
+## Usage
+
+1. You can restrict both the *type* and *size* of each capturing group.
+
+    ```php
+    $format = '{{ foo : 5s }}, {{ bar : 5s }}!';
+    $str = 'Hello, World!';
+    $e = new yuanqing\Extract\Extract($format);
+    var_dump($e->extract($str)); #=> array('foo' => 'Hello', 'bar' => 'World')
+    ```
+
+2. The `extract` method returns `null` if the given `$str` does not match the format.
+
+Read [the tests](https://github.com/yuanqing/extract/blob/master/test/ExtractTest.php) for more usage examples.
+
+## Requirements
+
+Extract.php requires at least **PHP 5.3**, or **HHVM**.
 
 ## Installation
 
