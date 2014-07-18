@@ -269,12 +269,12 @@ class ExtractTest extends PHPUnit_Framework_TestCase
     return array(
 
       # non-special characters between groups
-      array(' {{ foo }} {{ bar }} {{ baz }} ', ' qux quux bam ', array(
+      array('{{ foo }} {{ bar }} {{ baz }}', 'qux quux bam', array(
         'foo' => 'qux',
         'bar' => 'quux',
         'baz' => 'bam'
       )),
-      array(' {{ foo : 3 }} {{ bar : 4 }} {{ baz : 3 }} ', ' qux quux bam ', array(
+      array('{{ foo : 3 }} {{ bar : 4 }} {{ baz : 3 }}', 'qux quux bam', array(
         'foo' => 'qux',
         'bar' => 'quux',
         'baz' => 'bam'

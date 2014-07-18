@@ -31,14 +31,14 @@ class Extract
     }, $format . '{{'); # append '{{' to make the regex work
     $regex = substr($regex, 0, -2); # drop the '{{'
 
-    # replace tags with named capturing groups; callback is a class method to accommodate PHP 5.3
-    $regex = preg_replace_callback('/{{(.+?)}}(?=.{0,2})/', array($this, 'replaceTags'), $regex);
+    # replace tags with capturing groups; callback is a class method to accommodate PHP 5.3
+    $regex = preg_replace_callback('/{{(.+?)}}/', array($this, 'replaceTags'), $regex);
 
     if (empty($this->keys)) {
       throw new \InvalidArgumentException('$format must have at least one capturing group');
     }
 
-    # match the string from beginning to end; /s flag so that wildcard also matches "\n"
+    # match the string from beginning to end; use /s flag so that wildcard char also matches "\n"
     $this->regex = '/^' . $regex . '$/s';
   }
 
@@ -48,7 +48,7 @@ class Extract
    * @param string $matches Array of matched elements
    * @throws UnexpectedValueException
    */
-  private function replaceTags($matches)
+  private function replaceTags($matches) # $matches is the tag
   {
     $match = trim($matches[1]);
     if ($match === '') {
@@ -57,9 +57,13 @@ class Extract
 
     $split = explode(':', $match); # split on ':'
     $this->keys[] = trim($split[0]);
-    if (count($split) === 1) { # no specifier
+
+    # specifier absent
+    if (!isset($split[1])) {
       return '(.+?)';
     }
+
+    # specifier present
     $specifier = trim($split[1]);
     if ($specifier === '0') {
       throw new \InvalidArgumentException('Invalid length specifier: 0');
@@ -67,40 +71,38 @@ class Extract
 
     $lastChar = substr($specifier, -1); # $lastChar of $specifier is the type
     switch ($lastChar) {
-      case 's': # string
       case 'd': # integer
       case 'f': # float
+      case 's': # string
+        $len = trim(substr($specifier, 0, -1)) ?: '1,'; # $len defaults to >=1
+        # if float type, find $lenBeforeDec and $lenAfterDec
+        if ($lastChar == 'f') {
+          if ($len === '1,') { # ie. no length specified
+            $lenBeforeDec = $lenAfterDec = '1,';
+          } else {
+            if ($len[0] === '.') { # first char is '.'
+              $lenBeforeDec = '0,';
+              $lenAfterDec = substr($len, 1);
+            } else if (substr($len, -1) === '.') { # last char is '.'
+              $lenBeforeDec = substr($len, 0, -1);
+              $lenAfterDec = '0,';
+            } else {
+              if ($len === '0.0') {
+                throw new \InvalidArgumentException('Invalid length specifier: 0.0');
+              }
+              $split = explode('.', $len);
+              $lenBeforeDec = trim($split[0]);
+              $lenAfterDec = trim($split[1]);
+            }
+          }
+        }
         break;
       default: # no type
-        $int = (int) $specifier;
-        if ($specifier !== (string) $int) {
+        $cast = (int) $specifier;
+        if ($specifier !== (string) $cast) {
           throw new \InvalidArgumentException(sprintf('Invalid length specifier: %s', $specifier));
         }
-        return sprintf('(.{%s})', $specifier); # assume string type
-    }
-
-    $len = trim(substr($specifier, 0, -1)) ?: '1,'; # $len defaults to >=1
-
-    # if float type, find $lenBeforeDec and $lenAfterDec
-    if ($lastChar == 'f') {
-      if ($len === '1,') { # ie. no length specified
-        $lenBeforeDec = $lenAfterDec = '1,';
-      } else {
-        if ($len[0] === '.') { # first char is '.'
-          $lenBeforeDec = '0,';
-          $lenAfterDec = substr($len, 1);
-        } else if (substr($len, -1) === '.') { # last char is '.'
-          $lenBeforeDec = substr($len, 0, -1);
-          $lenAfterDec = '0,';
-        } else {
-          if ($len === '0.0') {
-            throw new \InvalidArgumentException('Invalid length specifier: 0.0');
-          }
-          $split = explode('.', $len);
-          $lenBeforeDec = trim($split[0]);
-          $lenAfterDec = trim($split[1]);
-        }
-      }
+        $len = $specifier;
     }
 
     # finally, return the capturing group
@@ -115,7 +117,7 @@ class Extract
   }
 
   /**
-   * Extract values from $str based on {$format}.
+   * Extract values from $str based on {$format}
    *
    * @param string $str The string to extract values from
    * @return array
@@ -146,7 +148,7 @@ class Extract
   }
 
   /**
-   * Unflattens $arr, with each key expanded on '.'.
+   * Unflattens $arr, with each key expanded on '.'
    *
    * @example
    * $arr = array('foo.bar' => 'baz');
@@ -169,7 +171,7 @@ class Extract
 
   /**
    * Casts the $str string (passed by reference) to integer or float if possible, else leaves
-   * $str unchanged.
+   * $str unchanged
    *
    * @param array $str The str to cast
    * @return null
@@ -187,7 +189,7 @@ class Extract
   }
 
   /**
-   * Returns true if $obj can be cast to string.
+   * Returns true if $obj can be cast to string
    *
    * @param mixed $obj
    * @return boolean
