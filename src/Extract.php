@@ -26,7 +26,7 @@ class Extract
   }
 
   /**
-   * Parses the given $format into {$regex}, and populates the {$keys} array
+   * Parses the given $format into $this->regex, while also populating the $this->keys array
    *
    * @param string $format The format to match strings against
    * @throws InvalidArgumentException
@@ -71,11 +71,11 @@ class Extract
   }
 
   /**
-   * Parse a capturing group into a RegEx capturing group
+   * Parses a raw capturing group into a RegEx capturing group
    *
-   * @param string $group The string between the opening '{{' and closing '}}'
-   * @param string $charBefore The character before the opening '{{'
-   * @param string $charAfter The character after the closing '}}'
+   * @param string $group The string between the opening braces and closing braces
+   * @param string $charBefore The character immediately before the opening braces
+   * @param string $charAfter The character immediately after the closing braces
    * @throws UnexpectedValueException
    */
   private function parseCapturingGroup($group, $charBefore, $charAfter)
@@ -121,10 +121,10 @@ class Extract
         if ($len === '') { # ie. no length specified
           $lenBeforeDec = $lenAfterDec = '1,';
         } else {
-          if ($len[0] === '.') { # first char is '.'
+          if ($len[0] == '.') { # first char is '.'
             $lenBeforeDec = '0,';
             $lenAfterDec = substr($len, 1);
-          } else if (substr($len, -1) === '.') { # last char is '.'
+          } else if (substr($len, -1) == '.') { # last char is '.'
             $lenBeforeDec = substr($len, 0, -1);
             $lenAfterDec = '0,';
           } else {
@@ -149,14 +149,14 @@ class Extract
       case 'd':
         return sprintf('(\d{%s})', $len);
       case 'f':
-        return sprintf('(\d{%s}\.\d{%s})', $lenBeforeDec, $lenAfterDec);
+        return sprintf('([-+]?\d{%s}\.\d{%s})', $lenBeforeDec, $lenAfterDec);
       default:
         return sprintf('(.{%s})', $len);
     }
   }
 
   /**
-   * Extract values from $str based on {$format}
+   * Extracts values from $str based on $this->format
    *
    * @param string $str The string to extract values from
    * @return array
@@ -209,18 +209,18 @@ class Extract
   }
 
   /**
-   * Casts the $str string (passed by reference) to integer or float if possible, else leaves
-   * $str unchanged
+   * If possible, Casts the $str string (passed by reference) to an integer or float, else
+   * leaves $str unchanged
    *
-   * @param array $str The str to cast
+   * @param array $str The string to be cast
    * @return null
    */
   private function typeCast(&$str)
   {
     if (is_numeric($str)) {
-      $int = intval($str);
-      if ($str == (string) $int) {
-        $str = $int;
+      $cast = intval($str);
+      if ($str == (string) $cast) {
+        $str = $cast;
       } else {
         $str = floatval($str);
       }
@@ -235,11 +235,7 @@ class Extract
    */
   private function canCastToInteger($obj)
   {
-    $cast = intval($obj);
-    if (is_numeric($obj) && (string) $cast == (string) $obj) {
-      return true;
-    }
-    return false;
+    return is_numeric($obj) && (string) intval($obj) == (string) $obj;
   }
 
   /**
