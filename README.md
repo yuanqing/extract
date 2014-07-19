@@ -76,13 +76,15 @@ Extract.php requires at least **PHP 5.3**, or **HHVM**.
 
 ### Install with Composer
 
-1. Install [the Extract.php Composer package](https://packagist.org/packages/yuanqing/extract):
+1. Install [Composer](http://getcomposer.org/).
+
+2. Install [the Extract.php Composer package](https://packagist.org/packages/yuanqing/extract):
 
     ```
     $ composer require yuanqing/extract ~0.1
     ```
 
-2. In your PHP, require the Composer autoloader:
+3. In your PHP, require the Composer autoloader:
 
     ```php
     require_once __DIR__ . '/vendor/autoload.php';
